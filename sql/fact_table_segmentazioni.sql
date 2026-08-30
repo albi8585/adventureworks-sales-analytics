@@ -151,7 +151,7 @@ FROM kpi_finale_120gg
 )
 
 --faccio la segmentazione dei clienti creando il loro profilo commerciale in base alla clusterizzazione per il fatturato storico
--- e al loro acquisto pi˘ recente in termini temporali
+-- e al loro acquisto pi√π recente in termini temporali
 
 select ks.customerid,
 	-- clusterizzazione rispetto al fatturato storico di ogni cliente
@@ -162,11 +162,11 @@ select ks.customerid,
 	CASE
     WHEN livelloStoricoCustomer = 'Storico TOP'
          AND COALESCE(SegmentoRecency120gg, 'Non attivo') IN ('A rischio', 'Non attivo')
-        THEN 'Priorit‡ alta'
+        THEN 'Priorit√† alta'
 
     WHEN livelloStoricoCustomer IN ('Storico TOP', 'Storico standard')
          AND COALESCE(Fatturato_120G, 0) > 0
-        THEN 'Priorit‡ media'
+        THEN 'Priorit√† media'
 
     ELSE 'Monitoraggio'
 END AS AlertCommerciale, 
