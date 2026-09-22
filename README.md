@@ -1,357 +1,435 @@
-[README_AdventureWorks.md](https://github.com/user-attachments/files/32163613/README_AdventureWorks.md)
-# AdventureWorks Sales Analytics
+# AdventureWorks Sales Analytics Pipeline
 
-## End-to-End Sales Analytics Workflow with Python, SQL Server and Power BI
+Portfolio project built on **AdventureWorks2022** to demonstrate an end-to-end analytics workflow based on **SQL Server, Python and Power BI**.
 
-This project reproduces a **simplified end-to-end analytics workflow
-built around a realistic business scenario**, starting from the public
-AdventureWorks database.
+The project transforms the static AdventureWorks sample database into a simplified **continuously evolving business scenario**. Historical sales are used as the baseline, Python generates new daily transactions, SQL Server manages the ETL and analytical layers, and Power BI turns the resulting data into a decision-oriented reporting workflow.
 
-The objective is not only to analyze historical sales, but to build a
-workflow that can continue beyond the original dataset through
-**simulated daily transactions, automated SQL processing and Power BI
-analysis designed to support commercial decision-making**.
+A key extension of the project is the **commercial action monitoring process**: underperforming Country × Subcategory combinations can be identified, their starting position can be frozen in a SQL snapshot, and subsequent sales performance can be compared with that baseline to measure the evolution of the commercial action over time.
 
-The project follows this flow:
-
-**Historical Data → Data Exploration → SQL Data Mart → Data Preparation
-→ Process Automation → Python Sales Simulation → Power BI Analysis &
-Decisions**
-
-------------------------------------------------------------------------
-
-## Project Objectives
-
-The project was designed to reproduce the main stages of a business
-analytics pipeline:
-
--   explore historical sales patterns and identify data-quality issues;
--   create a dedicated analytical layer separated from the original
-    AdventureWorks tables;
--   prepare and align historical data for the project timeline;
--   preserve historical product prices and costs for time-consistent
-    analysis;
--   simulate new daily sales transactions using Python;
--   validate and load new data through an automated SQL Server pipeline;
--   expose analytical views and KPIs to Power BI;
--   organize BI analysis as a decision journey from overall performance
-    to commercial priorities.
-
-------------------------------------------------------------------------
+---
 
 ## Architecture
 
-### 1. Data Exploration
+```text
+AdventureWorks2022
+        │
+        ├── Historical AdventureWorks tables
+        │
+        ▼
+project schema
+        │
+        ├── Historical project tables
+        ├── Staging tables
+        ├── Product cost history
+        └── Power BI dimensions
+        │
+        ▲
+        │
+Python daily sales simulator
+        │
+        ▼
+Daily staging tables
+        │
+        ▼
+SQL Server ETL / stored procedures
+        │
+        ▼
+Historical project tables
+        │
+        ├── Star-schema dimensions
+        ├── Analytical SQL views
+        └── Commercial monitoring snapshots
+        │
+        ▼
+Power BI
+        │
+        ├── Business performance analysis
+        ├── Commercial action prioritisation
+        ├── Action monitoring
+        └── Day-by-day monitoring
+```
 
-Historical AdventureWorks sales were analyzed before building the
-simulation and analytical pipeline.
+---
 
-The exploration highlighted an important issue in the historical daily
-sales distribution: **abnormal end-of-month quantity spikes** made
-direct random sampling from historical daily totals unsuitable for
-generating realistic daily transactions.
+## What the project demonstrates
 
-This finding influenced the simulation approach later implemented in
-Python.
+- SQL Server data modelling on top of AdventureWorks2022
+- Creation of a separate analytical `project` schema
+- Python-based generation of simulated daily sales
+- Daily staging, validation and loading workflow
+- Historical product-cost handling and margin calculations
+- Reporting-oriented star schema for Power BI
+- Customer and product segmentation
+- Cohort, retention and purchase-sequence analysis
+- Power BI-ready fact and analytical SQL views
+- Country × Subcategory commercial prioritisation
+- Snapshot-based monitoring of commercial actions
+- Comparison between a frozen baseline and continuously evolving sales
+- Separation between reusable SQL business logic and interactive DAX measures
 
-Data inconsistencies relevant to the analytical model were also
-identified and addressed before generating new sales.
+---
 
-------------------------------------------------------------------------
+## Business analytics workflow
 
-### 2. SQL Server --- Project Data Mart
+The Power BI report is designed as a **decision journey**, rather than as a collection of independent dashboards.
 
-A dedicated `project` schema separates the analytical project from the
-original AdventureWorks source tables.
+```text
+Business Performance
+        │
+        ▼
+Identify performance gaps
+        │
+        ▼
+Commercial Actions
+        │
+        ▼
+Select Country × Subcategory priorities
+        │
+        ▼
+Create Monitoring Snapshot
+        │
+        ▼
+Freeze the starting business position
+        │
+        ▼
+Action Monitoring
+        │
+        ▼
+Compare current performance with the snapshot
+        │
+        ▼
+Day-by-Day Monitoring
+        │
+        ▼
+Observe recovery and ongoing sales evolution
+```
 
-Only the entities required by the project are selected and loaded into a
-dedicated model containing sales facts, dimensions and supporting
-historical tables.
+This creates two complementary monitoring levels:
 
-The analytical layer includes information related to:
+- **Periodic Business Review** — evaluates overall performance and identifies Country × Subcategory combinations requiring attention.
+- **Continuous Monitoring** — follows selected commercial actions after their baseline has been frozen and measures how performance evolves as new simulated sales are generated.
 
--   sales orders and order details;
--   customers;
--   products and product categories;
--   sales territories;
--   special offers and discounts;
--   product price history;
--   product cost history;
--   calendar and BI dimensions.
+---
 
-The original AdventureWorks tables remain reference sources, while
-project-specific transformations are performed inside the dedicated
-schema.
+## Commercial Action Monitoring
 
-------------------------------------------------------------------------
+The monitoring layer extends the reporting workflow from **identifying a problem** to **following what happens after an action is initiated**.
 
-### 3. SQL Server --- Data Preparation and Historical Consistency
+### 1. Commercial prioritisation
 
-Historical data is transformed into a simulation-ready analytical layer.
+Power BI evaluates sales performance by **Country × Subcategory** and highlights combinations where current revenue is below the expected goal.
 
-The original AdventureWorks timeline is shifted to the project timeline
-while preserving the chronological relationships between orders, prices
-and costs.
+The analysis provides the basis for selecting potential commercial actions.
 
-Two historical tables play an important role:
+### 2. Snapshot creation
 
-#### `project.ProductListPriceHistory`
+When a combination is selected for monitoring, a SQL Server stored procedure creates a snapshot of its starting position.
 
-Stores the historical selling-price intervals for each product.
+The snapshot stores the relevant business state at the beginning of the monitoring period, including information such as:
 
-Its validity periods are aligned with the shifted order timeline so that
-the selling price valid on a specific `OrderDate` can be determined
-consistently.
+- Country
+- Subcategory
+- Snapshot date
+- Revenue at snapshot
+- Goal at snapshot
+- Initial revenue gap
+- Priority information
 
-#### `project.ProductCostHistory`
+The snapshot therefore acts as a **fixed baseline**. It is not recalculated when new sales arrive.
 
-Stores the historical `StandardCost` intervals for each product.
+### 3. Monitoring view
 
-The same temporal alignment is applied so that each sale can be
-associated with the cost valid at that point in time, providing a
-consistent basis for **profit and margin analysis**.
-
-The latest price and cost intervals are kept open-ended so they can also
-support current and subsequently generated transactions.
-
-This approach avoids relying only on the current `ListPrice` and
-`StandardCost` stored in the product table.
-
-------------------------------------------------------------------------
-
-### 4. SQL Server --- Automation and BI Views
-
-The daily data pipeline is automated through SQL Server stored
-procedures and SQL Server Agent.
-
-The workflow manages:
-
-**Staging → Validation → Transformation → Final Load → BI-ready data**
-
-The SQL layer also exposes dedicated analytical views and KPIs to Power
-BI, reducing transformation logic inside the reporting layer and keeping
-business calculations closer to the analytical database.
-
-------------------------------------------------------------------------
-
-## Python Sales Simulation
-
-Python extends the dataset beyond the original AdventureWorks historical
-period by generating new daily sales transactions.
-
-### Simulation Logic
-
-Historical daily quantities could not be sampled directly because of the
-abnormal end-of-month spikes identified during Data Exploration.
-
-The simulation therefore uses the **historical average daily sold
-quantity as its reference point** and introduces controlled variability
-through a Weibull distribution.
+`project.VW_ActionMonitoring` combines the frozen snapshot with the continuously updated sales fact layer.
 
 Conceptually:
 
-``` text
-daily target = historical daily quantity mean × random factor
+```text
+                 FROZEN BASELINE
+                       │
+                       │
+Monitoring Snapshot ───┤
+                       │
+                       ▼
+                VW_ActionMonitoring
+                       ▲
+                       │
+                       │
+Current Sales Data ────┤
+                       │
+                 EVOLVING DATA
 ```
 
-The random factor is drawn from a Weibull distribution and normalized so
-that simulated daily targets remain centered around historical average
-demand while still showing realistic day-to-day variability.
+This makes it possible to preserve the business situation that triggered the action while current revenue continues to evolve through the daily simulation pipeline.
 
-The current implementation uses a Weibull shape parameter:
+### 4. Measuring the action over time
 
-``` text
-β = 1.5
+Power BI can then compare the initial gap with the current situation using monitoring KPIs such as:
+
+- **Initial Gap** — revenue gap when monitoring started
+- **Expected Recovery** — recovery target defined for the action
+- **Actual Recovery** — reduction of the initial gap observed after the snapshot
+- **Target Achievement** — actual recovery relative to expected recovery
+
+The objective is not to claim causal attribution between an action and sales growth, but to provide a structured way to **track whether the selected commercial gap is recovering after the action starts**.
+
+---
+
+## Database setup
+
+Database creation is separated into sequential scripts:
+
+```text
+01_create_project_schema.sql
+        ↓
+02_load_initial_data.sql
+        ↓
+03_post_load_transformations.sql
+        ↓
+04_create_powerbi_dimensions.sql
 ```
 
-Once the daily target is defined, Python generates the simulated sales
-records and writes them to the SQL staging layer, where they are
-validated and loaded by the automated SQL process.
+The sequence reflects the logical data-engineering flow:
 
-------------------------------------------------------------------------
+1. **Schema creation** — creates project tables, constraints and monitoring support tables.
+2. **Initial load** — copies the required AdventureWorks data into the `project` schema.
+3. **Post-load transformations** — aligns historical dates, manages historical costs and recalculates commercial values.
+4. **Power BI dimensions** — creates reporting-ready dimensions for the semantic model.
 
-## Power BI --- From Performance to Commercial Priorities
+---
 
-Power BI is structured as a **decision journey rather than a collection
-of independent dashboards**.
+## Power BI star schema
 
-The analysis progressively narrows from overall business performance to
-specific commercial priorities.
+The reporting layer uses a simplified star-schema approach. Normalized SQL tables are retained for data processing, while denormalized dimensions make filtering and drill-down operations easier in Power BI.
 
-### 1 --- Understand
+| Dimension | Purpose | Main key |
+|---|---|---|
+| `project.Territory` | Geography / sales territory | `TerritoryID` |
+| `project.dimension_type_customer` | Customer name and customer type | `customerId` |
+| `project.dimensioni_prod_cat` | Product → Subcategory → Category hierarchy | `productid` |
+| `project.calendar` | Date, year, month and quarter hierarchy | `data` |
 
-**How is the business performing overall?**
+Typical relationships with the sales fact layer are:
 
-Main indicators include:
-
--   Revenue
--   Profit / Margin
--   Year-over-Year performance
--   Goal achievement
-
-### 2 --- Diagnose
-
-**Where is performance changing?**
-
-The analysis supports drill-down across two main dimensions:
-
-``` text
-Region → Country
-Category → Subcategory
+```text
+                        calendar
+                           │
+                       OrderDate
+                           │
+                           ▼
+dimensioni_prod_cat → SALES FACT ← Territory
+      ProductID                         TerritoryID
+                           ▲
+                           │
+                       CustomerID
+                           │
+               dimension_type_customer
 ```
 
-This makes it possible to identify where performance changes originate.
+The product and customer dimensions are deliberately denormalized for reporting, while the underlying normalized project tables remain available for ETL and SQL processing.
 
-### 3 --- Prioritize
+---
 
-**Which combinations deserve action first?**
+## Daily sales simulation
 
-Country × Subcategory combinations are evaluated using performance
-versus goal and potential commercial impact.
+`python/sales_simulation.py` connects to SQL Server, analyses historical order distributions and creates a new simulated sales day.
 
-The final objective is to answer a practical business question:
+The script generates:
 
-> **Where should I act first --- and why?**
+- new `SalesOrderID` and `SalesOrderDetailID` values;
+- order quantities and product mixes derived from historical distributions;
+- customer, salesperson and territory assignments;
+- order, due and shipping dates;
+- records for the project staging tables.
 
-Commercial priorities are classified into action groups such as
-**High**, **Medium**, **Monitor**, **New Opportunity** and **No
-Action**, helping translate analytical results into an actionable view.
+Validation checks are performed before the simulated batch enters the historical project layer.
 
-------------------------------------------------------------------------
+The purpose of the simulator is to make a static sample database behave more like an **ongoing business environment**, allowing dashboards and monitoring KPIs to change over time.
 
-## Technology Stack
+---
 
-  -----------------------------------------------------------------------
-  Technology                          Role
-  ----------------------------------- -----------------------------------
-  **SQL Server**                      Data mart, transformations,
-                                      historical alignment, staging,
-                                      validation and automated loading
+## Daily ETL Pipeline and Testing
 
-  **SQL Server Agent**                Scheduling and execution of the
-                                      daily SQL pipeline
+The project includes an automated daily ETL pipeline designed to simulate a continuously updated sales database.
 
-  **Python**                          Historical-pattern analysis and
-                                      daily sales simulation
-
-  **pandas / NumPy**                  Data processing and simulation
-                                      logic
-
-  **Power BI**                        Data modeling, KPI analysis,
-                                      drill-down and commercial
-                                      prioritization
-
-  **DAX**                             Business measures, comparisons,
-                                      goals, clustering and analytical
-                                      logic
-
-  **AdventureWorks**                  Public source dataset
-  -----------------------------------------------------------------------
-
-------------------------------------------------------------------------
-
-## Repository Structure
-
-``` text
-adventureworks-sales-analytics/
-│
-├── SQL/
-│   ├── schema creation
-│   ├── initial data load
-│   ├── post-load transformations
-│   ├── daily load procedures
-│   ├── automation procedures
-│   ├── Power BI dimensions
-│   └── analytical / KPI views
-│
-├── Python/
-│   └── daily sales simulation
-│
-└── README.md
-```
-
-The SQL scripts are organized to separate **initial project setup**,
-**historical preparation**, **daily processing** and **BI-serving
-logic**.
-
-------------------------------------------------------------------------
-
-## End-to-End Workflow
-
-``` text
-AdventureWorks
-      │
-      ▼
-Historical Sales Analysis
-      │
-      ▼
-SQL Server Project Data Mart
-      │
-      ▼
-Historical Data Preparation
-Price / Cost Temporal Alignment
-      │
-      ▼
-Python Simulation Logic
-      │
-      ▼
-Simulated Daily Sales
-      │
-      ▼
-SQL Staging & Validation
-      │
-      ▼
-Automated Final Load
-      │
-      ▼
-BI Views & KPIs
-      │
-      ▼
+```text
+Python Sales Simulation
+        │
+        ▼
+Daily Staging Tables
+        │
+        ▼
+Daily Load Stored Procedure
+        │
+        ▼
+Historical Project Tables
+        │
+        ▼
+Analytical SQL Views
+        │
+        ▼
 Power BI
-Understand → Diagnose → Prioritize
 ```
 
-------------------------------------------------------------------------
+The automated procedure checks whether new unprocessed data is available and executes the historical load only when required.
 
-## Key Project Takeaways
+A dedicated **test/reset workflow** allows the loading process to be validated repeatedly without permanently modifying the baseline dataset.
 
-The project focuses on the integration of **data exploration, data
-engineering, simulation and business analytics** rather than on a single
-dashboard or isolated analysis.
+```text
+Test Daily Load
+      │
+      ▼
+Historical Tables
+      │
+      ▼
+Validation
+      │
+      ▼
+Reset Procedure
+      │
+      ▼
+Pre-test State
+```
 
-The main design choices were:
+This is a controlled test/reset workflow rather than a full database backup or transactional rollback: only data affected by the simulated test load is restored.
 
--   separating the project analytical layer from the source database;
--   validating historical patterns before defining the simulation;
--   preserving temporal consistency between orders, selling prices and
-    product costs;
--   generating new daily transactions instead of keeping the dataset
-    static;
--   automating the recurring SQL load process;
--   preparing BI-oriented views and KPIs in SQL Server;
--   structuring Power BI around a progressive business decision process.
+---
 
-The result is a small but complete analytics workflow that moves from
-**raw historical data to continuously generated transactions and
-decision-oriented BI analysis**.
+## Power BI analytical layer
 
-------------------------------------------------------------------------
+The reporting layer supports analyses including:
 
-## Dataset
+- revenue and margin performance;
+- current performance versus historical benchmarks and goals;
+- Country × Subcategory prioritisation;
+- customer segmentation;
+- cohort and retention analysis;
+- repurchase timing;
+- purchase sequence / next-purchase behaviour;
+- commercial action monitoring;
+- recovery versus the frozen snapshot baseline;
+- day-by-day sales evolution.
 
-This project uses the public **Microsoft AdventureWorks** sample
-database as its starting point.
+The report separates **diagnosis**, **action selection** and **monitoring**, so that the analytical workflow continues after an underperforming area has been identified.
 
-The project does not represent a real company or live commercial
-environment. It uses public sample data and simulated transactions to
-reproduce a simplified but realistic analytics workflow for portfolio
-and learning purposes.
+---
 
-------------------------------------------------------------------------
+## Technical Challenges & Design Decisions
 
-## Author
+### Making a static sample database behave like a live system
 
-**Alberto Gubernati**
+AdventureWorks is a historical sample database. The project shifts the historical timeline and combines it with a Python daily-sales simulator so that the reporting layer evolves over time instead of remaining a static demonstration dataset.
 
-Data Analytics portfolio project focused on SQL Server, Python, Power BI
-and end-to-end analytical workflows.
+### Preserving historical product costs
+
+Profitability cannot be calculated correctly using only the current product cost. The project keeps a separate product cost history and aligns its validity periods with the shifted order timeline.
+
+### Separating staging from analytical tables
+
+Simulated orders are not inserted directly into the reporting tables. They first pass through staging tables and SQL validation/loading logic before reaching the historical project layer.
+
+### Separating transactional modelling from reporting modelling
+
+The SQL processing layer retains normalized entities, while Power BI consumes simplified dimensions such as product hierarchy, customer type, territory and calendar.
+
+### Freezing the starting point of a commercial action
+
+A monitoring dashboard cannot reliably evaluate progress if its starting baseline changes every time the underlying data is refreshed.
+
+For this reason, the project uses a dedicated **snapshot table and stored procedure** to preserve the selected Country × Subcategory position at the beginning of the action. The monitoring view then combines that fixed baseline with current sales data.
+
+This allows the report to answer two different questions:
+
+```text
+What was the situation when the action started?
+                    vs.
+What is the situation now?
+```
+
+### Keeping SQL and DAX responsibilities distinct
+
+Reusable dataset logic and monitoring baselines are handled upstream in SQL Server.
+
+Power BI / DAX is mainly responsible for filter-context-dependent KPIs, goals, clusters, recovery calculations and interactive analysis.
+
+---
+
+## Repository structure
+
+```text
+README.md
+
+python/
+  sales_simulation.py
+
+sql/
+  database_build/
+    01_create_project_schema.sql
+    02_load_initial_data.sql
+    03_post_load_transformations.sql
+    04_create_powerbi_dimensions.sql
+
+  daily_pipeline/
+    01_daily_table_load_procedure.sql
+    02_daily_automation_procedure.sql
+
+  testing/
+    01_daily_load_test.sql
+    02_reset_historical_tables_for_test_procedure.sql
+
+  analytics/
+    01_powerbi_fact_view.sql
+    02_customer_analytics_views.sql
+    03_create_action_monitoring_snapshot_procedure.sql
+    04_action_monitoring_view.sql
+
+powerbi/
+  Reserved for report screenshots or the PBIX file, when publishable.
+```
+
+The analytics layer therefore progresses from general reporting datasets to the commercial monitoring workflow:
+
+```text
+Power BI Fact View
+        ↓
+Customer Analytics
+        ↓
+Monitoring Snapshot Procedure
+        ↓
+Action Monitoring View
+```
+
+---
+
+## Requirements
+
+- SQL Server with the AdventureWorks2022 sample database
+- Python 3.x
+- Microsoft ODBC Driver for SQL Server
+- Python packages listed in `requirements.txt`
+- Power BI Desktop
+
+Install Python dependencies with:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Notes
+
+AdventureWorks is a Microsoft sample database. This repository contains the additional SQL, Python and BI logic developed for the portfolio project, not the AdventureWorks database itself.
+
+The sales generated after the historical baseline are **simulated transactions** and are intended to reproduce the behaviour of an evolving analytical environment.
+
+The monitoring workflow tracks changes after a commercial action baseline is created; it should not be interpreted as proof that the action itself caused the observed sales change.
+
+---
+
+## Repository
+
+https://github.com/albi8585/adventureworks-sales-analytics
+
+## Local configuration
+
+The Python sales generator reads the SQL Server instance and database from environment variables. No credentials are stored in the repository. See `.env.example` for the expected configuration.
